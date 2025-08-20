@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aplikasi Rapor Santri</title>
+  <style>
+    :root {
+      --sidebar-bg: #2c3e50;
+      --sidebar-text: #ecf0f1;
+      --sidebar-hover: #34495e;
+      --header-bg: #34495e;
+      --header-text: #ecf0f1;
+      --content-bg: #f4f6f7;
+      --card-bg: #ffffff;
+      --primary: #007bff;
+      --danger: #dc3545;
+      --secondary: #6c757d;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: var(--content-bg);
+    }
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar .brand {
+      padding: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      border-bottom: 1px solid #1c2833;
+    }
+    .sidebar nav {
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+    .sidebar nav a {
+      display: block;
+      padding: 12px 20px;
+      cursor: pointer;
+      color: inherit;
+      text-decoration: none;
+    }
+    .sidebar nav a.active,
+    .sidebar nav a:hover {
+      background-color: var(--sidebar-hover);
+    }
+    .content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--content-bg);
+      overflow-y: auto;
+    }
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .header .logout-btn {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .main {
+      padding: 20px;
+      flex-grow: 1;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table th,
+    table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background-color: #eaeaea;
+    }
+    button {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.primary {
+      background-color: var(--primary);
+      color: white;
+    }
+    button.danger {
+      background-color: var(--danger);
+      color: white;
+    }
+    button.secondary {
+      background-color: var(--secondary);
+      color: white;
+    }
+    /* Login styles */
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: var(--content-bg);
+    }
+    .login-box {
+      width: 340px;
+      padding: 20px;
+      background: var(--card-bg);
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .login-box h3 {
+      margin-top: 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React and Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <script type="text/babel">
+    // Note: The application requires network access to load React and Babel libraries from CDN.
+    // When viewing locally without internet, the page may remain blank. Ensure internet connectivity when testing.
+    const { useState, useEffect } = React;
+
+    // Deep clone helper
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    // CSV download helper
+    function downloadCSV(filename, rows) {
+      const processRow = row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',');
+      const csvContent = rows.map(processRow).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    /** Login form component */
+    function Login({ onLogin, errorMsg }) {
+      const [username, setUsername] = useState('');
+      const [password, setPassword] = useState('');
+
+      const submit = e => {
+        e.preventDefault();
+        onLogin(username.trim(), password.trim());
+      };
+
+      return (
+        <div className="login-container">
+          <div className="login-box">
+            <h3>Login</h3>
+            <form onSubmit={submit}>
+              <div className="form-group">
+                <label>Username</label>
+                <input value={username} onChange={e => setUsername(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Password</label>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+              {errorMsg && <p style={{ color: 'red' }}>{errorMsg}</p>}
+              <button type="submit" className="primary" style={{ width: '100%' }}>Login</button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    /** Sidebar navigation component */
+    function Sidebar({ pages, activePage, setActivePage, brand }) {
+      return (
+        <div className="sidebar">
+          <div className="brand">{brand || 'Dashboard'}</div>
+          <nav>
+            {pages.map(page => (
+              <a
+                key={page.id}
+                className={activePage === page.id ? 'active' : ''}
+                onClick={() => setActivePage(page.id)}
+              >
+                {page.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      );
+    }
+
+    /** Header component */
+    function Header({ loginName, onLogout }) {
+      return (
+        <div className="header">
+          <h2>Aplikasi Rapor Santri</h2>
+          <div>
+            <span style={{ marginRight: '15px' }}>Login sebagai: {loginName}</span>
+            <button className="logout-btn" onClick={onLogout}>Keluar</button>
+          </div>
+        </div>
+      );
+    }
+
+    /** Settings Page */
+    function SettingsPage({ settings, setSettings, resetAll }) {
+      const [localSettings, setLocalSettings] = useState(deepClone(settings));
+      const [newClassName, setNewClassName] = useState('');
+
+      useEffect(() => {
+        setLocalSettings(deepClone(settings));
+      }, [settings]);
+
+      const handleChange = e => {
+        const { name, value } = e.target;
+        setLocalSettings(prev => ({ ...prev, [name]: value }));
+      };
+
+      const addClass = () => {
+        const cls = newClassName.trim();
+        if (!cls) return;
+        if (localSettings.classList.includes(cls)) {
+          alert('Kelas sudah ada');
+          return;
+        }
+        setLocalSettings(prev => ({ ...prev, classList: [...prev.classList, cls] }));
+        setNewClassName('');
+      };
+
+      const removeClass = cls => {
+        if (confirm('Hapus kelas ' + cls + '?')) {
+          setLocalSettings(prev => ({ ...prev, classList: prev.classList.filter(c => c !== cls) }));
+        }
+      };
+
+      const saveSettings = () => {
+        if (!localSettings.adminUsername.trim() || !localSettings.adminPassword.trim()) {
+          alert('Username dan password admin tidak boleh kosong');
+          return;
+        }
+        setSettings(localSettings);
+        alert('Pengaturan disimpan');
+      };
+
+      return (
+        <div>
+          <h3>Pengaturan</h3>
+          <div className="form-group">
+            <label>Nama Lembaga / Pondok</label>
+            <input name="schoolName" value={localSettings.schoolName} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Tahun Ajaran</label>
+            <input name="year" value={localSettings.year} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Semester</label>
+            <input name="semester" value={localSettings.semester} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Alamat</label>
+            <input name="address" value={localSettings.address} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Kepala Sekolah / Mudir</label>
+            <input name="headmaster" value={localSettings.headmaster} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Wali Kelas</label>
+            <input name="classTeacher" value={localSettings.classTeacher} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>KKM (Kriteria Ketuntasan Minimal)</label>
+            <input
+              type="number"
+              name="kkm"
+              value={localSettings.kkm}
+              onChange={e => {
+                const val = parseFloat(e.target.value);
+                setLocalSettings(prev => ({ ...prev, kkm: isNaN(val) ? 0 : val }));
+              }}
+            />
+          </div>
+          <div className="form-group">
+            <label>Username Admin</label>
+            <input name="adminUsername" value={localSettings.adminUsername} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Password Admin</label>
+            <input type="password" name="adminPassword" value={localSettings.adminPassword} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Daftar Kelas</label>
+            <ul style={{ listStyle: 'disc inside', paddingLeft: '20px' }}>
+              {localSettings.classList.map(cls => (
+                <li key={cls} style={{ marginBottom: '4px' }}>
+                  {cls}{' '}
+                  <button className="danger" onClick={() => removeClass(cls)}>Hapus</button>
+                </li>
+              ))}
+            </ul>
+            <input
+              placeholder="Nama kelas baru"
+              value={newClassName}
+              onChange={e => setNewClassName(e.target.value)}
+            />
+            <button className="primary" style={{ marginLeft: '6px' }} onClick={addClass}>Tambah Kelas</button>
+          </div>
+          <button className="primary" onClick={saveSettings}>Simpan Pengaturan</button>
+          <button className="danger" style={{ marginLeft: '10px' }} onClick={resetAll}>Reset Semua</button>
+        </div>
+      );
+    }
+
+    /** Subjects Page */
+    function SubjectsPage({ subjects, setSubjects }) {
+      const [form, setForm] = useState({ name: '', countExam: 2, countTask: 2, wExam: 0.3, wTask: 0.2, wUTS: 0.25, wUAS: 0.25 });
+      const [editingIndex, setEditingIndex] = useState(null);
+
+      const resetForm = () => {
+        setForm({ name: '', countExam: 2, countTask: 2, wExam: 0.3, wTask: 0.2, wUTS: 0.25, wUAS: 0.25 });
+        setEditingIndex(null);
+      };
+
+      const handleChange = e => {
+        const { name, value } = e.target;
+        if (['countExam', 'countTask'].includes(name)) {
+          const num = parseInt(value, 10);
+          setForm(prev => ({ ...prev, [name]: isNaN(num) ? 0 : num }));
+        } else if (['wExam', 'wTask', 'wUTS', 'wUAS'].includes(name)) {
+          const num = parseFloat(value);
+          setForm(prev => ({ ...prev, [name]: isNaN(num) ? 0 : num }));
+        } else {
+          setForm(prev => ({ ...prev, [name]: value }));
+        }
+      };
+
+      const addOrUpdate = () => {
+        if (!form.name.trim()) {
+          alert('Nama mata pelajaran diperlukan');
+          return;
+        }
+        const newSubj = { ...form };
+        if (editingIndex !== null) {
+          const list = subjects.slice();
+          list[editingIndex] = newSubj;
+          setSubjects(list);
+        } else {
+          setSubjects([...subjects, newSubj]);
+        }
+        resetForm();
+      };
+
+      const editSubject = index => {
+        setForm({ ...subjects[index] });
+        setEditingIndex(index);
+      };
+
+      const deleteSubject = index => {
+        if (confirm('Hapus mata pelajaran ini?')) {
+          setSubjects(subjects.filter((_, i) => i !== index));
+        }
+      };
+
+      return (
+        <div>
+          <h3>Daftar Mata Pelajaran</h3>
+          {subjects.length === 0 && <p>Tidak ada mata pelajaran.</p>}
+          {subjects.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama</th>
+                  <th>Ulangan</th>
+                  <th>Tugas</th>
+                  <th>Bobot Ulangan</th>
+                  <th>Bobot Tugas</th>
+                  <th>Bobot UTS</th>
+                  <th>Bobot UAS</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subjects.map((s, index) => (
+                  <tr key={index}>
+                    <td>{index + 1}</td>
+                    <td>{s.name}</td>
+                    <td>{s.countExam}</td>
+                    <td>{s.countTask}</td>
+                    <td>{s.wExam}</td>
+                    <td>{s.wTask}</td>
+                    <td>{s.wUTS}</td>
+                    <td>{s.wUAS}</td>
+                    <td>
+                      <button className="secondary" onClick={() => editSubject(index)}>Edit</button>
+                      <button className="danger" style={{ marginLeft: '5px' }} onClick={() => deleteSubject(index)}>Hapus</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <h3>{editingIndex !== null ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran'}</h3>
+          <div className="form-group">
+            <label>Nama</label>
+            <input name="name" value={form.name} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Jumlah Ulangan</label>
+            <input type="number" name="countExam" value={form.countExam} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Jumlah Tugas</label>
+            <input type="number" name="countTask" value={form.countTask} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Bobot Ulangan</label>
+            <input type="number" step="0.01" name="wExam" value={form.wExam} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Bobot Tugas</label>
+            <input type="number" step="0.01" name="wTask" value={form.wTask} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Bobot UTS</label>
+            <input type="number" step="0.01" name="wUTS" value={form.wUTS} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Bobot UAS</label>
+            <input type="number" step="0.01" name="wUAS" value={form.wUAS} onChange={handleChange} />
+          </div>
+          <button className="primary" onClick={addOrUpdate}>{editingIndex !== null ? 'Simpan Perubahan' : 'Tambah'}</button>
+          {editingIndex !== null && <button className="secondary" style={{ marginLeft: '10px' }} onClick={resetForm}>Batal</button>}
+        </div>
+      );
+    }
+
+    /** Student Editor component */
+    function StudentEditor({ student, onSave, onCancel, subjects, settings, auth, teachers }) {
+      const [localStudent, setLocalStudent] = useState(deepClone(student));
+
+      // Adjust scores when subjects change
+      useEffect(() => {
+        const scores = { ...localStudent.scores };
+        subjects.forEach(subj => {
+          if (!scores[subj.name]) {
+            scores[subj.name] = {
+              exams: Array(subj.countExam).fill(0),
+              tasks: Array(subj.countTask).fill(0),
+              uts: 0,
+              uas: 0
+            };
+          } else {
+            // adjust arrays lengths
+            if (scores[subj.name].exams.length !== subj.countExam) {
+              scores[subj.name].exams = Array(subj.countExam).fill(0).map((_, idx) => scores[subj.name].exams[idx] || 0);
+            }
+            if (scores[subj.name].tasks.length !== subj.countTask) {
+              scores[subj.name].tasks = Array(subj.countTask).fill(0).map((_, idx) => scores[subj.name].tasks[idx] || 0);
+            }
+          }
+        });
+        setLocalStudent(prev => ({ ...prev, scores }));
+      }, [subjects]);
+
+      const updateScore = (subjectName, type, index, value) => {
+        const val = parseFloat(value);
+        setLocalStudent(prev => {
+          const newScores = deepClone(prev.scores);
+          if (type === 'exams') {
+            newScores[subjectName].exams[index] = isNaN(val) ? 0 : val;
+          } else if (type === 'tasks') {
+            newScores[subjectName].tasks[index] = isNaN(val) ? 0 : val;
+          } else if (type === 'uts') {
+            newScores[subjectName].uts = isNaN(val) ? 0 : val;
+          } else if (type === 'uas') {
+            newScores[subjectName].uas = isNaN(val) ? 0 : val;
+          }
+          return { ...prev, scores: newScores };
+        });
+      };
+
+      const handleAttendanceChange = e => {
+        const { name, value } = e.target;
+        const num = parseInt(value, 10);
+        setLocalStudent(prev => ({ ...prev, attendance: { ...prev.attendance, [name]: isNaN(num) ? 0 : num } }));
+      };
+
+      const handleSikapChange = e => {
+        const { name, value } = e.target;
+        setLocalStudent(prev => ({ ...prev, sikap: { ...prev.sikap, [name]: value } }));
+      };
+
+      const handleNoteChange = e => {
+        setLocalStudent(prev => ({ ...prev, note: e.target.value }));
+      };
+
+      const handleClassChange = e => {
+        setLocalStudent(prev => ({ ...prev, class: e.target.value }));
+      };
+
+      const save = () => {
+        onSave(localStudent);
+      };
+
+      // determine allowed subjects for teacher
+      let allowedSubjects = subjects;
+      if (auth.role === 'teacher') {
+        const teacher = teachers.find(t => t.id === auth.teacherId);
+        if (teacher) {
+          allowedSubjects = subjects.filter(subj => teacher.subjects.includes(subj.name));
+        } else {
+          allowedSubjects = [];
+        }
+      }
+
+      return (
+        <div style={{ marginTop: '20px', padding: '15px', border: '1px solid #ccc', backgroundColor: '#fff' }}>
+          <h4>Edit Siswa: {localStudent.name}</h4>
+          {auth.role === 'admin' && (
+            <div className="form-group">
+              <label>Kelas</label>
+              <select value={localStudent.class} onChange={handleClassChange}>
+                {settings.classList.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <h5>Nilai</h5>
+          {allowedSubjects.length === 0 && <p>Tidak ada mata pelajaran yang dapat diinput.</p>}
+          {allowedSubjects.map(subj => {
+            const score = localStudent.scores[subj.name];
+            return (
+              <div key={subj.name} style={{ marginBottom: '10px', padding: '8px', border: '1px dashed #aaa' }}>
+                <strong>{subj.name}</strong>
+                <div>
+                  <label>Ulangan:</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {score.exams.map((val, idx) => (
+                      <input
+                        key={idx}
+                        type="number"
+                        value={val}
+                        onChange={e => updateScore(subj.name, 'exams', idx, e.target.value)}
+                        style={{ width: '60px', padding: '4px' }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label>Tugas:</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {score.tasks.map((val, idx) => (
+                      <input
+                        key={idx}
+                        type="number"
+                        value={val}
+                        onChange={e => updateScore(subj.name, 'tasks', idx, e.target.value)}
+                        style={{ width: '60px', padding: '4px' }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label>UTS:</label>
+                  <input
+                    type="number"
+                    value={score.uts}
+                    onChange={e => updateScore(subj.name, 'uts', 0, e.target.value)}
+                    style={{ width: '60px', padding: '4px' }}
+                  />
+                  <label style={{ marginLeft: '10px' }}>UAS:</label>
+                  <input
+                    type="number"
+                    value={score.uas}
+                    onChange={e => updateScore(subj.name, 'uas', 0, e.target.value)}
+                    style={{ width: '60px', padding: '4px' }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+          <h5>Absensi</h5>
+          <div className="form-group">
+            <label>Sakit</label>
+            <input type="number" name="sakit" value={localStudent.attendance.sakit} onChange={handleAttendanceChange} />
+          </div>
+          <div className="form-group">
+            <label>Izin</label>
+            <input type="number" name="izin" value={localStudent.attendance.izin} onChange={handleAttendanceChange} />
+          </div>
+          <div className="form-group">
+            <label>Alfa</label>
+            <input type="number" name="alfa" value={localStudent.attendance.alfa} onChange={handleAttendanceChange} />
+          </div>
+          <h5>Sikap / Catatan</h5>
+          <div className="form-group">
+            <label>Akhlak</label>
+            <input name="akhlak" value={localStudent.sikap.akhlak} onChange={handleSikapChange} />
+          </div>
+          <div className="form-group">
+            <label>Kerapian</label>
+            <input name="kerapian" value={localStudent.sikap.kerapian} onChange={handleSikapChange} />
+          </div>
+          <div className="form-group">
+            <label>Catatan</label>
+            <textarea value={localStudent.note} onChange={handleNoteChange}></textarea>
+          </div>
+          <button className="primary" onClick={save}>Simpan</button>
+          <button className="secondary" style={{ marginLeft: '10px' }} onClick={onCancel}>Batal</button>
+        </div>
+      );
+    }
+
+    /** Students Page */
+    function StudentsPage({ students, setStudents, subjects, settings, auth, teachers }) {
+      const [editingId, setEditingId] = useState(null);
+      const [newStudent, setNewStudent] = useState({ name: '', class: settings.classList[0] || '' });
+
+      useEffect(() => {
+        // update newStudent class when class list changes
+        setNewStudent(prev => ({ ...prev, class: settings.classList[0] || '' }));
+      }, [settings.classList]);
+
+      const resetNewStudent = () => {
+        setNewStudent({ name: '', class: settings.classList[0] || '' });
+      };
+
+      const addStudent = () => {
+        if (!newStudent.name.trim()) {
+          alert('Nama siswa diperlukan');
+          return;
+        }
+        const id = Date.now().toString();
+        const student = {
+          id,
+          name: newStudent.name.trim(),
+          class: newStudent.class,
+          attendance: { sakit: 0, izin: 0, alfa: 0 },
+          sikap: { akhlak: '', kerapian: '' },
+          note: '',
+          scores: subjects.reduce((acc, subj) => {
+            acc[subj.name] = {
+              exams: Array(subj.countExam).fill(0),
+              tasks: Array(subj.countTask).fill(0),
+              uts: 0,
+              uas: 0
+            };
+            return acc;
+          }, {})
+        };
+        setStudents(prev => [...prev, student]);
+        resetNewStudent();
+      };
+
+      const deleteStudent = id => {
+        if (confirm('Hapus siswa ini?')) {
+          setStudents(prev => prev.filter(s => s.id !== id));
+        }
+      };
+
+      const startEdit = id => {
+        setEditingId(id);
+      };
+
+      const cancelEdit = () => {
+        setEditingId(null);
+      };
+
+      const saveStudent = updated => {
+        setStudents(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+        setEditingId(null);
+      };
+
+      return (
+        <div>
+          <h3>Daftar Siswa</h3>
+          {students.length === 0 && <p>Tidak ada siswa.</p>}
+          {students.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama</th>
+                  <th>Kelas</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((stu, index) => (
+                  <tr key={stu.id}>
+                    <td>{index + 1}</td>
+                    <td>{stu.name}</td>
+                    <td>{stu.class}</td>
+                    <td>
+                      <button className="secondary" onClick={() => startEdit(stu.id)}>Input Nilai</button>
+                      {auth.role === 'admin' && (
+                        <button className="danger" style={{ marginLeft: '5px' }} onClick={() => deleteStudent(stu.id)}>Hapus</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {auth.role === 'admin' && (
+            <div>
+              <h3>Tambah Siswa</h3>
+              <div className="form-group">
+                <label>Nama</label>
+                <input value={newStudent.name} onChange={e => setNewStudent(prev => ({ ...prev, name: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Kelas</label>
+                <select value={newStudent.class} onChange={e => setNewStudent(prev => ({ ...prev, class: e.target.value }))}>
+                  {settings.classList.map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
+              </div>
+              <button className="primary" onClick={addStudent}>Tambah Siswa</button>
+            </div>
+          )}
+          {editingId && (
+            <StudentEditor
+              student={students.find(s => s.id === editingId)}
+              onSave={saveStudent}
+              onCancel={cancelEdit}
+              subjects={subjects}
+              settings={settings}
+              auth={auth}
+              teachers={teachers}
+            />
+          )}
+        </div>
+      );
+    }
+
+    /** Raport Page */
+    function RaportPage({ students, subjects, settings }) {
+      const [selectedId, setSelectedId] = useState('');
+      const student = students.find(s => s.id === selectedId);
+
+      const compute = (subj, score) => {
+        const avgExams = score.exams.length > 0 ? score.exams.reduce((a,b) => a + b, 0) / score.exams.length : 0;
+        const avgTasks = score.tasks.length > 0 ? score.tasks.reduce((a,b) => a + b, 0) / score.tasks.length : 0;
+        const weightSum = subj.wExam + subj.wTask + subj.wUTS + subj.wUAS;
+        const final = weightSum > 0 ? (avgExams * subj.wExam + avgTasks * subj.wTask + score.uts * subj.wUTS + score.uas * subj.wUAS) / weightSum : 0;
+        return { avgExams, avgTasks, final };
+      };
+
+      return (
+        <div>
+          <h3>Cetak Rapor</h3>
+          <div className="form-group">
+            <label>Pilih Siswa</label>
+            <select value={selectedId} onChange={e => setSelectedId(e.target.value)}>
+              <option value="">-- Pilih --</option>
+              {students.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
+              ))}
+            </select>
+          </div>
+          {student && (
+            <div style={{ backgroundColor: '#fff', padding: '20px', border: '1px solid #ccc' }}>
+              <h4 style={{ textAlign: 'center' }}>{settings.schoolName}</h4>
+              <p><strong>Nama:</strong> {student.name}</p>
+              <p><strong>Kelas:</strong> {student.class}</p>
+              <p><strong>Tahun/Semester:</strong> {settings.year} / {settings.semester}</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Rata-rata Ulangan</th>
+                    <th>Rata-rata Tugas</th>
+                    <th>UTS</th>
+                    <th>UAS</th>
+                    <th>Nilai Akhir</th>
+                    <th>KKM</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjects.map((subj, index) => {
+                    const score = student.scores[subj.name] || { exams: [], tasks: [], uts: 0, uas: 0 };
+                    const { avgExams, avgTasks, final } = compute(subj, score);
+                    const status = final >= settings.kkm ? 'Tuntas' : 'Belum';
+                    return (
+                      <tr key={subj.name}>
+                        <td>{index + 1}</td>
+                        <td>{subj.name}</td>
+                        <td>{avgExams.toFixed(2)}</td>
+                        <td>{avgTasks.toFixed(2)}</td>
+                        <td>{score.uts}</td>
+                        <td>{score.uas}</td>
+                        <td>{final.toFixed(2)}</td>
+                        <td>{settings.kkm}</td>
+                        <td>{status}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <h4>Absensi</h4>
+              <p>Sakit: {student.attendance.sakit} hari</p>
+              <p>Izin: {student.attendance.izin} hari</p>
+              <p>Alfa: {student.attendance.alfa} hari</p>
+              <h4>Sikap</h4>
+              <p>Akhlak: {student.sikap.akhlak}</p>
+              <p>Kerapian: {student.sikap.kerapian}</p>
+              <h4>Catatan Wali Kelas</h4>
+              <p>{student.note}</p>
+              <button className="primary" onClick={() => window.print()}>Cetak / Print</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /** Class Recap Page */
+    function ClassRecapPage({ students, subjects, settings }) {
+      const [selectedClass, setSelectedClass] = useState('');
+      const studentsInClass = students.filter(s => s.class === selectedClass);
+
+      const computeFinal = (subj, score) => {
+        const avgExams = score.exams.length > 0 ? score.exams.reduce((a,b) => a + b, 0) / score.exams.length : 0;
+        const avgTasks = score.tasks.length > 0 ? score.tasks.reduce((a,b) => a + b, 0) / score.tasks.length : 0;
+        const weightSum = subj.wExam + subj.wTask + subj.wUTS + subj.wUAS;
+        return weightSum > 0 ? (avgExams * subj.wExam + avgTasks * subj.wTask + score.uts * subj.wUTS + score.uas * subj.wUAS) / weightSum : 0;
+      };
+
+      const exportCSV = () => {
+        if (!selectedClass) {
+          alert('Pilih kelas terlebih dahulu');
+          return;
+        }
+        const rows = [];
+        const header = ['Nama', ...subjects.map(s => s.name), 'Rata-rata'];
+        rows.push(header);
+        studentsInClass.forEach(stu => {
+          const cells = [stu.name];
+          let total = 0;
+          subjects.forEach(subj => {
+            const score = stu.scores[subj.name] || { exams: [], tasks: [], uts: 0, uas: 0 };
+            const final = computeFinal(subj, score);
+            cells.push(final.toFixed(2));
+            total += final;
+          });
+          const avg = subjects.length > 0 ? total / subjects.length : 0;
+          cells.push(avg.toFixed(2));
+          rows.push(cells);
+        });
+        downloadCSV('rekap_' + selectedClass + '.csv', rows);
+      };
+
+      return (
+        <div>
+          <h3>Rekap Nilai per Kelas</h3>
+          <div className="form-group">
+            <label>Pilih Kelas</label>
+            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
+              <option value="">-- Pilih --</option>
+              {settings.classList.map(cls => (
+                <option key={cls} value={cls}>{cls}</option>
+              ))}
+            </select>
+          </div>
+          {selectedClass && studentsInClass.length === 0 && <p>Tidak ada siswa di kelas ini.</p>}
+          {selectedClass && studentsInClass.length > 0 && (
+            <div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    {subjects.map(subj => (
+                      <th key={subj.name}>{subj.name}</th>
+                    ))}
+                    <th>Rata-rata</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentsInClass.map(stu => {
+                    let total = 0;
+                    const cells = subjects.map(subj => {
+                      const score = stu.scores[subj.name] || { exams: [], tasks: [], uts: 0, uas: 0 };
+                      const final = computeFinal(subj, score);
+                      total += final;
+                      return <td key={subj.name}>{final.toFixed(2)}</td>;
+                    });
+                    const avg = subjects.length > 0 ? total / subjects.length : 0;
+                    return (
+                      <tr key={stu.id}>
+                        <td>{stu.name}</td>
+                        {cells}
+                        <td>{avg.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <button className="primary" onClick={exportCSV}>Export CSV</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /** Ranking Page */
+    function RankingPage({ students, subjects, settings }) {
+      const [selectedClass, setSelectedClass] = useState('');
+      const studentsInClass = students.filter(s => s.class === selectedClass).map(s => {
+        let total = 0;
+        subjects.forEach(subj => {
+          const score = s.scores[subj.name] || { exams: [], tasks: [], uts: 0, uas: 0 };
+          const avgExams = score.exams.length > 0 ? score.exams.reduce((a,b) => a + b, 0) / score.exams.length : 0;
+          const avgTasks = score.tasks.length > 0 ? score.tasks.reduce((a,b) => a + b, 0) / score.tasks.length : 0;
+          const weightSum = subj.wExam + subj.wTask + subj.wUTS + subj.wUAS;
+          const final = weightSum > 0 ? (avgExams * subj.wExam + avgTasks * subj.wTask + score.uts * subj.wUTS + score.uas * subj.wUAS) / weightSum : 0;
+          total += final;
+        });
+        const avg = subjects.length > 0 ? total / subjects.length : 0;
+        return { ...s, avg };
+      });
+      let sorted = [];
+      if (selectedClass) {
+        sorted = studentsInClass.sort((a, b) => b.avg - a.avg);
+      }
+
+      const exportCSV = () => {
+        if (!selectedClass) {
+          alert('Pilih kelas terlebih dahulu');
+          return;
+        }
+        const rows = [];
+        rows.push(['Rank', 'Nama', 'Rata-rata']);
+        let prevAvg = null;
+        let rank = 0;
+        let count = 0;
+        sorted.forEach(stu => {
+          count++;
+          if (prevAvg === null || stu.avg !== prevAvg) {
+            rank = count;
+          }
+          rows.push([rank, stu.name, stu.avg.toFixed(2)]);
+          prevAvg = stu.avg;
+        });
+        downloadCSV('ranking_' + selectedClass + '.csv', rows);
+      };
+
+      return (
+        <div>
+          <h3>Ranking Siswa per Kelas</h3>
+          <div className="form-group">
+            <label>Pilih Kelas</label>
+            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
+              <option value="">-- Pilih --</option>
+              {settings.classList.map(cls => (
+                <option key={cls} value={cls}>{cls}</option>
+              ))}
+            </select>
+          </div>
+          {selectedClass && sorted.length === 0 && <p>Tidak ada siswa di kelas ini.</p>}
+          {selectedClass && sorted.length > 0 && (
+            <div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Nama</th>
+                    <th>Rata-rata</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    let prevAvg = null;
+                    let rank = 0;
+                    let count = 0;
+                    return sorted.map(stu => {
+                      count++;
+                      if (prevAvg === null || stu.avg !== prevAvg) {
+                        rank = count;
+                      }
+                      prevAvg = stu.avg;
+                      return (
+                        <tr key={stu.id}>
+                          <td>{rank}</td>
+                          <td>{stu.name}</td>
+                          <td>{stu.avg.toFixed(2)}</td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+              <button className="primary" onClick={exportCSV}>Export CSV</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /** Teachers Page */
+    function TeachersPage({ teachers, setTeachers, subjects }) {
+      const [form, setForm] = useState({ name: '', username: '', pin: '' });
+      const [editingId, setEditingId] = useState(null);
+
+      const handleChange = e => {
+        const { name, value } = e.target;
+        setForm(prev => ({ ...prev, [name]: value }));
+      };
+
+      const resetForm = () => {
+        setForm({ name: '', username: '', pin: '' });
+        setEditingId(null);
+      };
+
+      const addOrUpdate = () => {
+        if (!form.name.trim() || !form.username.trim() || !form.pin.trim()) {
+          alert('Nama, username, dan PIN guru diperlukan');
+          return;
+        }
+        if (editingId) {
+          setTeachers(prev => prev.map(t => (t.id === editingId ? { ...t, ...form } : t)));
+        } else {
+          if (teachers.some(t => t.username === form.username.trim())) {
+            alert('Username sudah digunakan');
+            return;
+          }
+          const newTeacher = {
+            id: Date.now().toString(),
+            name: form.name.trim(),
+            username: form.username.trim(),
+            pin: form.pin.trim(),
+            subjects: []
+          };
+          setTeachers(prev => [...prev, newTeacher]);
+        }
+        resetForm();
+      };
+
+      const editTeacher = id => {
+        const t = teachers.find(x => x.id === id);
+        if (t) {
+          setForm({ name: t.name, username: t.username, pin: t.pin });
+          setEditingId(id);
+        }
+      };
+
+      const deleteTeacher = id => {
+        if (confirm('Hapus guru ini?')) {
+          setTeachers(prev => prev.filter(t => t.id !== id));
+        }
+      };
+
+      const assignSubjects = (teacherId, subjName) => {
+        setTeachers(prev => prev.map(t => {
+          if (t.id !== teacherId) return t;
+          const assigned = t.subjects || [];
+          if (assigned.includes(subjName)) {
+            return { ...t, subjects: assigned.filter(s => s !== subjName) };
+          } else {
+            return { ...t, subjects: [...assigned, subjName] };
+          }
+        }));
+      };
+
+      return (
+        <div>
+          <h3>Guru</h3>
+          {teachers.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama</th>
+                  <th>Username</th>
+                  <th>Assign Mapel</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teachers.map((t, index) => (
+                  <tr key={t.id}>
+                    <td>{index + 1}</td>
+                    <td>{t.name}</td>
+                    <td>{t.username}</td>
+                    <td>
+                      {subjects.length === 0 ? 'Tidak ada mapel' : subjects.map(subj => (
+                        <label key={subj.name} style={{ display: 'block' }}>
+                          <input
+                            type="checkbox"
+                            checked={t.subjects && t.subjects.includes(subj.name)}
+                            onChange={() => assignSubjects(t.id, subj.name)}
+                          />{' '}
+                          {subj.name}
+                        </label>
+                      ))}
+                    </td>
+                    <td>
+                      <button className="secondary" onClick={() => editTeacher(t.id)}>Edit</button>
+                      <button className="danger" style={{ marginLeft: '5px' }} onClick={() => deleteTeacher(t.id)}>Hapus</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <h3>{editingId ? 'Edit Guru' : 'Tambah Guru'}</h3>
+          <div className="form-group">
+            <label>Nama</label>
+            <input name="name" value={form.name} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Username</label>
+            <input name="username" value={form.username} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>PIN</label>
+            <input name="pin" value={form.pin} onChange={handleChange} />
+          </div>
+          <button className="primary" onClick={addOrUpdate}>{editingId ? 'Simpan' : 'Tambah'}</button>
+          {editingId && <button className="secondary" style={{ marginLeft: '10px' }} onClick={resetForm}>Batal</button>}
+        </div>
+      );
+    }
+
+    /** Main App component */
+    function App() {
+      // default data
+      const defaultSettings = {
+        schoolName: '',
+        year: '',
+        semester: '',
+        classList: ['A'],
+        kkm: 70,
+        address: '',
+        headmaster: '',
+        classTeacher: '',
+        adminUsername: 'admin',
+        adminPassword: 'admin'
+      };
+      const [settings, setSettings] = useState(defaultSettings);
+      const [subjects, setSubjects] = useState([]);
+      const [students, setStudents] = useState([]);
+      const [teachers, setTeachers] = useState([]);
+      const [auth, setAuth] = useState(null);
+      const [activePage, setActivePage] = useState('students');
+      const [loginError, setLoginError] = useState('');
+
+      // Load from localStorage
+      useEffect(() => {
+        const dataStr = localStorage.getItem('raporSantriAppV4');
+        if (dataStr) {
+          try {
+            const data = JSON.parse(dataStr);
+            if (data.settings) setSettings(data.settings);
+            if (data.subjects) setSubjects(data.subjects);
+            if (data.students) setStudents(data.students);
+            if (data.teachers) setTeachers(data.teachers);
+          } catch (err) {
+            console.error('Failed to load data', err);
+          }
+        }
+      }, []);
+
+      // Save to localStorage
+      useEffect(() => {
+        const data = { settings, subjects, students, teachers };
+        localStorage.setItem('raporSantriAppV4', JSON.stringify(data));
+      }, [settings, subjects, students, teachers]);
+
+      const handleLogin = (username, password) => {
+          // admin
+          if (username === settings.adminUsername && password === settings.adminPassword) {
+            setAuth({ role: 'admin', teacherId: null });
+            setActivePage('students');
+            setLoginError('');
+            return;
+          }
+          // teacher
+          const teacher = teachers.find(t => t.username === username && t.pin === password);
+          if (teacher) {
+            setAuth({ role: 'teacher', teacherId: teacher.id });
+            setActivePage('students');
+            setLoginError('');
+            return;
+          }
+          setLoginError('Username atau password salah');
+      };
+
+      const handleLogout = () => {
+        setAuth(null);
+      };
+
+      const resetAll = () => {
+        if (confirm('Apakah Anda yakin ingin menghapus semua data?')) {
+          setSettings(deepClone(defaultSettings));
+          setSubjects([]);
+          setStudents([]);
+          setTeachers([]);
+          setAuth(null);
+          localStorage.removeItem('raporSantriAppV4');
+        }
+      };
+
+      if (!auth) {
+        return <Login onLogin={handleLogin} errorMsg={loginError} />;
+      }
+
+      // Determine accessible pages by role
+      const pageList = [
+        { id: 'settings', label: 'Pengaturan', roles: ['admin'], component: SettingsPage },
+        { id: 'subjects', label: 'Mapel', roles: ['admin'], component: SubjectsPage },
+        { id: 'students', label: 'Siswa & Nilai', roles: ['admin', 'teacher'], component: StudentsPage },
+        { id: 'rapor', label: 'Rapor', roles: ['admin', 'teacher'], component: RaportPage },
+        { id: 'rekap', label: 'Rekap Kelas', roles: ['admin'], component: ClassRecapPage },
+        { id: 'ranking', label: 'Ranking', roles: ['admin'], component: RankingPage },
+        { id: 'teachers', label: 'Guru', roles: ['admin'], component: TeachersPage }
+      ];
+      const availablePages = pageList.filter(p => p.roles.includes(auth.role));
+      const CurrentComponent = availablePages.find(p => p.id === activePage)?.component || (() => <div>Pilih halaman</div>);
+      // Determine login name
+      let loginName = '';
+      if (auth.role === 'admin') {
+        loginName = 'Admin';
+      } else {
+        const t = teachers.find(x => x.id === auth.teacherId);
+        loginName = t ? t.name : '';
+      }
+
+      return (
+        <div id="app">
+          <Sidebar pages={availablePages} activePage={activePage} setActivePage={setActivePage} brand={settings.schoolName} />
+          <div className="content">
+            <Header loginName={loginName} onLogout={handleLogout} />
+            <div className="main">
+              {React.createElement(CurrentComponent, {
+                settings,
+                setSettings,
+                subjects,
+                setSubjects,
+                students,
+                setStudents,
+                teachers,
+                setTeachers,
+                auth,
+                resetAll
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
