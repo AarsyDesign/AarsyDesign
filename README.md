@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/AarsyDesign/AarsyDesign/main/assets/header.svg" alt="AarsyDesign" width="100%">
 
-<img src="https://typing-svg.demolab.com?pid=profile&font=600&weight=600&width=600&height=52&duration=3200&repeat=Infinity&lines=Web+Designer;Front-End+Developer;Flutter+Builder;Tinkerer+with+AI+Agents&seed=AarsyDesign" alt="typing svg">
+<img src="https://raw.githubusercontent.com/AarsyDesign/AarsyDesign/main/assets/typing.svg" alt="Web Designer • Front-End Developer • Flutter Builder • Tinkerer with AI Agents" width="100%">
 
 <br><br>
 
